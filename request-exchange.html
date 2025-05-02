@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PageTurner – Exchange Requests</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-50 text-gray-800">
+    <!-- NAVBAR -->
+    <nav class="bg-white shadow">
+      <div
+        class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center"
+      >
+        <a href="index.html" class="flex items-center space-x-2">
+          <div
+            class="h-8 w-8 bg-indigo-600 rounded flex items-center justify-center text-white font-bold"
+          >
+            P
+          </div>
+          <span class="text-2xl font-bold text-indigo-600">PageTurner</span>
+        </a>
+        <div id="nav-links" class="flex space-x-4 items-center"></div>
+      </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-6 py-10">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-3xl font-bold">Exchange Requests</h2>
+        <button
+          id="new-request-btn"
+          class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+        >
+          + New Request
+        </button>
+      </div>
+
+      <!-- Incoming Requests -->
+      <section class="mb-10">
+        <h3 class="text-2xl font-semibold mb-4">Requests You've Received</h3>
+        <div id="incoming-requests-container" class="space-y-4"></div>
+      </section>
+
+      <!-- Sent Requests -->
+      <section>
+        <h3 class="text-2xl font-semibold mb-4">Requests You've Sent</h3>
+        <div id="sent-requests-container" class="space-y-4"></div>
+      </section>
+    </main>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", async () => {
+        const token = localStorage.getItem("token");
+        if (!token) return (window.location.href = "login.html");
+
+        // populate navbar (omitted for brevity)...
+
+        // New‐request button
+        document.getElementById("new-request-btn").onclick = () => {
+          window.location.href = "request.html";
+        };
+
+        // fetch dashboard
+        const res = await fetch("http://localhost:4000/dashboard", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          localStorage.removeItem("token");
+          return (window.location.href = "login.html");
+        }
+        const { incomingRequests, yourRequests } = await res.json();
+
+        // Incoming
+        const incEl = document.getElementById("incoming-requests-container");
+        if (!incomingRequests.length) {
+          incEl.innerHTML = `<p class="text-gray-600">No incoming requests.</p>`;
+        } else {
+          incEl.innerHTML = incomingRequests
+            .map(
+              (r) => `
+          <div class="bg-white p-4 rounded-lg shadow">
+            <p class="text-sm text-gray-600 mb-1">
+              <strong>Requester:</strong> ${r.requester.username}
+            </p>
+            <h4 class="font-semibold">${r.book.title}</h4>
+            <p class="text-sm text-gray-600 mb-1">by ${r.book.author}</p>
+            <p class="text-sm mb-3">
+              <strong>Status:</strong>
+              <span id="status-${r._id}" class="font-medium">${r.status}</span>
+            </p>
+            <div class="space-x-2">
+              ${
+                r.status === "pending"
+                  ? `<button data-id="${r._id}" data-action="accepted"
+                       class="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 approve-btn">
+                       Approve
+                     </button>
+                     <button data-id="${r._id}" data-action="declined"
+                       class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 decline-btn">
+                       Decline
+                     </button>`
+                  : ``
+              }
+            </div>
+          </div>`
+            )
+            .join("");
+
+          // wire up approve/decline
+          incEl
+            .querySelectorAll(".approve-btn, .decline-btn")
+            .forEach((btn) => {
+              btn.addEventListener("click", async () => {
+                const id = btn.dataset.id;
+                const status = btn.dataset.action;
+                const r2 = await fetch(`http://localhost:4000/requests/${id}`, {
+                  method: "PATCH",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                  },
+                  body: JSON.stringify({ status }),
+                });
+                if (r2.ok) {
+                  document.getElementById(`status-${id}`).textContent = status;
+                  btn.parentElement.innerHTML = "";
+                } else {
+                  alert("Failed to update request");
+                }
+              });
+            });
+        }
+
+        // Sent
+        const sentEl = document.getElementById("sent-requests-container");
+        if (!yourRequests.length) {
+          sentEl.innerHTML = `<p class="text-gray-600">You haven't sent any requests.</p>`;
+        } else {
+          sentEl.innerHTML = yourRequests
+            .map(
+              (r) => `
+          <div class="bg-white p-4 rounded-lg shadow">
+            <h4 class="font-semibold">${r.book.title}</h4>
+            <p class="text-sm text-gray-600 mb-1">by ${r.book.author}</p>
+            <p class="text-sm">
+              <strong>Status:</strong> ${r.status}
+            </p>
+          </div>`
+            )
+            .join("");
+        }
+      });
+    </script>
+  </body>
+</html>

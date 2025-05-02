@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PageTurner – Add Book</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-50 text-gray-800">
+    <!-- NAVBAR -->
+    <nav class="bg-white shadow">
+      <div
+        class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center"
+      >
+        <a href="index.html" class="flex items-center space-x-2">
+          <div
+            class="h-8 w-8 bg-indigo-600 rounded flex items-center justify-center text-white font-bold"
+          >
+            P
+          </div>
+          <span class="text-2xl font-bold text-indigo-600">PageTurner</span>
+        </a>
+        <div id="nav-links" class="flex space-x-4 items-center"></div>
+      </div>
+    </nav>
+
+    <!-- MAIN: Add Book Form -->
+    <main class="max-w-6xl mx-auto px-6 py-10">
+      <div class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-lg">
+        <h2 class="text-2xl font-bold text-indigo-600 mb-6">Add a New Book</h2>
+        <form id="add-book-form" class="space-y-5">
+          <div>
+            <label for="title" class="block mb-2 font-medium">Title</label>
+            <input
+              type="text"
+              id="title"
+              placeholder="Book title"
+              required
+              class="w-full bg-gray-100 border border-gray-300 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          </div>
+          <div>
+            <label for="author" class="block mb-2 font-medium">Author</label>
+            <input
+              type="text"
+              id="author"
+              placeholder="Book author"
+              required
+              class="w-full bg-gray-100 border border-gray-300 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          </div>
+          <div>
+            <label for="category" class="block mb-2 font-medium"
+              >Category</label
+            >
+            <input
+              type="text"
+              id="category"
+              placeholder="e.g. Fiction, History"
+              required
+              class="w-full bg-gray-100 border border-gray-300 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          </div>
+          <div>
+            <label for="condition" class="block mb-2 font-medium"
+              >Condition</label
+            >
+            <select
+              id="condition"
+              required
+              class="w-full bg-gray-100 border border-gray-300 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            >
+              <option value="">Select condition</option>
+              <option value="new">New</option>
+              <option value="good">Good</option>
+              <option value="fair">Fair</option>
+              <option value="poor">Poor</option>
+            </select>
+          </div>
+          <button
+            type="submit"
+            class="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition"
+          >
+            Add Book
+          </button>
+        </form>
+      </div>
+    </main>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", async () => {
+        const token = localStorage.getItem("token");
+        if (!token) return (window.location.href = "login.html");
+
+        // Populate nav links
+        const nav = document.getElementById("nav-links");
+        nav.innerHTML = `
+        <a href="my-books.html" class="text-gray-700 hover:underline">My Books</a>
+        <a href="discover-books.html" class="text-gray-700 hover:underline">Discover Books</a>
+        <a href="request-exchange.html" class="text-gray-700 hover:underline">Request Exchange</a>
+        <a href="#" id="logout-link" class="text-red-600 hover:underline">Logout</a>
+      `;
+        document
+          .getElementById("logout-link")
+          .addEventListener("click", (e) => {
+            e.preventDefault();
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
+          });
+
+        // Handle form submission
+        document
+          .getElementById("add-book-form")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const title = document.getElementById("title").value.trim();
+            const author = document.getElementById("author").value.trim();
+            const category = document.getElementById("category").value.trim();
+            const condition = document.getElementById("condition").value;
+
+            try {
+              const res = await fetch("http://localhost:4000/books", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ title, author, category, condition }),
+              });
+
+              const data = await res.json();
+              if (!res.ok) {
+                return alert("Error: " + (data.error || res.statusText));
+              }
+
+              // On success, go back to My Books
+              window.location.href = "my-books.html";
+            } catch (err) {
+              console.error(err);
+              alert("Failed to add book");
+            }
+          });
+      });
+    </script>
+  </body>
+</html>

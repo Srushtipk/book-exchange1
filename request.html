@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PageTurner – Request Book</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-50 text-gray-800">
+    <!-- NAVBAR -->
+    <nav class="bg-white shadow">
+      <div
+        class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center"
+      >
+        <a href="index.html" class="flex items-center space-x-2">
+          <div
+            class="h-8 w-8 bg-indigo-600 rounded flex items-center justify-center text-white font-bold"
+          >
+            P
+          </div>
+          <span class="text-2xl font-bold text-indigo-600">PageTurner</span>
+        </a>
+        <div id="nav-links" class="flex space-x-4 items-center"></div>
+      </div>
+    </nav>
+
+    <!-- MAIN -->
+    <main class="max-w-6xl mx-auto px-6 py-10">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-3xl font-bold">Request a Book</h2>
+      </div>
+      <div
+        id="books-container"
+        class="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+      >
+        <!-- book cards will go here -->
+      </div>
+    </main>
+
+    <script>
+      // Helper to decode JWT payload
+      function parseJwt(token) {
+        const base64Url = token.split(".")[1];
+        const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+        const json = decodeURIComponent(
+          atob(base64)
+            .split("")
+            .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+            .join("")
+        );
+        return JSON.parse(json);
+      }
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        const token = localStorage.getItem("token");
+        if (!token) return (window.location.href = "login.html");
+
+        // Decode userId from token
+        const { id: userId } = parseJwt(token);
+
+        // Populate navbar
+        const nav = document.getElementById("nav-links");
+        nav.innerHTML = `
+        <a href="my-books.html" class="text-gray-700 hover:underline">My Books</a>
+        <a href="discover-books.html" class="text-gray-700 hover:underline">Discover Books</a>
+        <a href="request-exchange.html" class="text-gray-700 hover:underline">Exchange Requests</a>
+        <a href="#" id="logout-link" class="text-red-600 hover:underline">Logout</a>
+      `;
+        document
+          .getElementById("logout-link")
+          .addEventListener("click", (e) => {
+            e.preventDefault();
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
+          });
+
+        // Fetch all books
+        let books;
+        try {
+          const res = await fetch("http://localhost:4000/books", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          books = await res.json();
+        } catch (err) {
+          console.error(err);
+          return alert("Failed to load books");
+        }
+
+        // Filter out user's own books
+        const available = books.filter((b) => b.user._id !== userId);
+
+        const container = document.getElementById("books-container");
+        if (available.length === 0) {
+          container.innerHTML = `
+          <p class="col-span-full text-center text-gray-600">
+            No books available to request.
+          </p>
+        `;
+          return;
+        }
+
+        // Render book cards
+        container.innerHTML = available
+          .map(
+            (book) => `
+        <div class="bg-white rounded-lg shadow overflow-hidden flex flex-col">
+          <img src="assets/book.jpg" alt="Cover of ${book.title}"
+               class="h-48 w-full object-cover" />
+          <div class="p-4 flex-1 flex flex-col">
+            <h3 class="font-semibold text-lg mb-1">${book.title}</h3>
+            <p class="text-gray-600 mb-2">by ${book.author}</p>
+            <p class="text-sm mb-4"><strong>Category:</strong> ${book.category}</p>
+            <p class="text-sm mb-4"><strong>Condition:</strong> ${book.condition}</p>
+            <button
+              data-id="${book._id}"
+              class="mt-auto px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition request-btn"
+            >
+              Request
+            </button>
+          </div>
+        </div>
+      `
+          )
+          .join("");
+
+        // Attach handlers to Request buttons
+        document.querySelectorAll(".request-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const bookId = btn.dataset.id;
+            try {
+              const res = await fetch("http://localhost:4000/requests", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ bookId }),
+              });
+              const data = await res.json();
+              if (!res.ok) {
+                return alert("Error: " + (data.error || res.statusText));
+              }
+              alert("Request sent!");
+              window.location.href = "request-exchange.html";
+            } catch (err) {
+              console.error(err);
+              alert("Failed to send request");
+            }
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

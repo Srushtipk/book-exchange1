@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PageTurner – My Books</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-50 text-gray-800">
+    <!-- NAVBAR -->
+    <nav class="bg-white shadow">
+      <div
+        class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center"
+      >
+        <a href="index.html" class="flex items-center space-x-2">
+          <div
+            class="h-8 w-8 bg-indigo-600 rounded flex items-center justify-center text-white font-bold"
+          >
+            P
+          </div>
+          <span class="text-2xl font-bold text-indigo-600">PageTurner</span>
+        </a>
+        <div id="nav-links" class="flex space-x-4 items-center"></div>
+      </div>
+    </nav>
+
+    <!-- MAIN: My Books -->
+    <main class="max-w-6xl mx-auto px-6 py-10">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-3xl font-bold">My Books</h2>
+        <button
+          id="add-book-btn"
+          class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+        >
+          + Add Book
+        </button>
+      </div>
+      <div
+        id="books-container"
+        class="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+      >
+        <!-- populated by script -->
+      </div>
+    </main>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", async () => {
+        const token = localStorage.getItem("token");
+        if (!token) return (window.location.href = "login.html");
+
+        // Populate nav
+        const nav = document.getElementById("nav-links");
+        nav.innerHTML = `
+        <a href="my-books.html" class="text-indigo-600 font-semibold hover:underline">My Books</a>
+        <a href="discover-books.html" class="text-gray-700 hover:underline">Discover Books</a>
+        <a href="request-exchange.html" class="text-gray-700 hover:underline">Request Exchange</a>
+        <a href="#" id="logout-link" class="text-red-600 hover:underline">Logout</a>
+      `;
+        document
+          .getElementById("logout-link")
+          .addEventListener("click", (e) => {
+            e.preventDefault();
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
+          });
+
+        // Fetch dashboard for listedBooks
+        try {
+          const res = await fetch("http://localhost:4000/dashboard", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) throw new Error("Unauthorized");
+          const { listedBooks } = await res.json();
+
+          const container = document.getElementById("books-container");
+          if (listedBooks.length === 0) {
+            container.innerHTML = `
+            <p class="col-span-full text-center text-gray-600">
+              You haven't added any books yet.
+            </p>
+          `;
+          } else {
+            container.innerHTML = listedBooks
+              .map(
+                (book) => `
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+              <img
+                src="assets/book.jpg"
+                alt="Book cover"
+                class="h-48 w-full object-cover"
+              />
+              <div class="p-4">
+                <h3 class="font-semibold text-lg mb-1">${book.title}</h3>
+                <p class="text-gray-600 mb-2">by ${book.author}</p>
+                <p class="text-sm"><strong>Category:</strong> ${book.category}</p>
+                <p class="text-sm"><strong>Condition:</strong> ${book.condition}</p>
+              </div>
+            </div>
+          `
+              )
+              .join("");
+          }
+        } catch (err) {
+          console.error(err);
+          window.location.href = "login.html";
+        }
+
+        // Add Book button
+        document
+          .getElementById("add-book-btn")
+          .addEventListener("click", () => {
+            window.location.href = "add-book.html";
+          });
+      });
+    </script>
+  </body>
+</html>
